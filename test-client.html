@@ -1,0 +1,107 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Document</title>
+  </head>
+  <body>
+    <h1>UNO Test</h1>
+    <div style="margin-bottom: 16px">
+      <input id="msg" type="text" placeholder="Type message" />
+      <button onclick="send()">Send</button>
+    </div>
+    <button onclick="createRoom()">Create Room</button>
+    <button onclick="leaveRoom()">Leave Room</button>
+    <button onclick="startGame()">Start Game</button>
+    <div style="margin: 16px 0">
+      <input id="roomId" type="text" placeholder="Enter roomId" />
+      <input id="playerName" type="text" placeholder="Enter your name" />
+      <button onclick="joinRoom()">Join Room</button>
+    </div>
+    <div>
+      <input id="roomMsg" type="text" placeholder="Enter your message" />
+      <button onclick="sendRoomMessage()">Send Message</button>
+    </div>
+    <div id="output"></div>
+
+    <script src="https://cdn.socket.io/4.5.4/socket.io.min.js"></script>
+
+    <script>
+      const socket = io('http://localhost:3000');
+
+      socket.on('connect', (socket) => {
+        document.getElementById('output').innerHTML += '<p>Connected!</p>';
+      });
+
+      socket.on('message', (message) => {
+        document.getElementById('output').innerHTML +=
+          `<p>Received: ${message}</p>`;
+      });
+
+      socket.on('roomCreated', (room) => {
+        document.getElementById('output').innerHTML +=
+          `<p>Room Created: ${room.roomId}</p>`;
+      });
+
+      socket.on('playerJoined', (message) => {
+        document.getElementById('output').innerHTML += `<p>${message}</p>`;
+      });
+
+      socket.on('roomJoined', (message) => {
+        document.getElementById('output').innerHTML += `<p>${message}</p>`;
+      });
+
+      socket.on('roomLeft', (message) => {
+        document.getElementById('output').innerHTML += `<p>${message}</p>`;
+      });
+
+      socket.on('roomMessaged', (message) => {
+        document.getElementById('output').innerHTML += `<p>${message}</p>`;
+      });
+
+      socket.on('yourCards', (cards) => {
+        document.getElementById('output').innerHTML +=
+          `<p>Your Cards: ${JSON.stringify(cards)}</p>`;
+      });
+
+      socket.on('gameStarted', ({openCard, currentPlayer, playerCardCounts}) => {
+        document.getElementById('output').innerHTML +=
+          `<p>Game Started! Open Card: ${JSON.stringify(openCard)}, Current Turn: ${currentPlayer}, Players Cards Count: ${JSON.stringify(playerCardCounts)}</p>`;
+      });
+
+      socket.on('error', (message) => {
+        document.getElementById('output').innerHTML += `<p style="color: red;">Error: ${message}</p>`;
+      })
+
+      function send() {
+        const message = document.getElementById('msg').value;
+        socket.emit('message', message);
+      }
+
+      function createRoom() {
+        socket.emit('createRoom', 'Test Player');
+      }
+
+      function joinRoom() {
+        const roomId = document.getElementById('roomId').value;
+        const playerName = document.getElementById('playerName').value;
+        socket.emit('joinRoom', { roomId, playerName });
+      }
+
+      function leaveRoom() {
+        socket.emit('leaveRoom');
+      }
+
+      function sendRoomMessage() {
+        const message = document.getElementById('roomMsg').value;
+
+        socket.emit('messageRoom', message);
+      }
+
+      function startGame() {
+        socket.emit('startGame');
+      }
+    </script>
+  </body>
+</html>
