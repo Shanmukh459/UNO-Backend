@@ -26,7 +26,7 @@ const playCard = (
   socketId: string,
   roomsMap: Map<string, Room>,
   chosenColor?: CardColor,
-): void => {
+): string | null => {
   const result = gameHelper.getPlayerRoom(socketId, roomsMap);
   if(!result) throw new Error(`Error: Game doesn't exists`);
   
@@ -82,12 +82,13 @@ const playCard = (
       if (drawCard) nextPlayer.cards.push(drawCard);
     }
 
+    const socketIdToEmitYourCards = nextPlayer.socketId;
     gameRoom.currentTurn = getNextTurn(
       nextPlayerIndex,
       gameRoom.gameDirection,
       gameRoom.players.length,
     );
-    return;
+    return socketIdToEmitYourCards;
   } else if (droppedCard.value === 'wildDraw4') {
 
     for (let i = 0; i < 4; i++) {
@@ -95,22 +96,24 @@ const playCard = (
       if (drawCard) nextPlayer.cards.push(drawCard);
     }
 
+    const socketIdToEmitYourCards = nextPlayer.socketId;
     gameRoom.currentTurn = getNextTurn(
       nextPlayerIndex,
       gameRoom.gameDirection,
       gameRoom.players.length,
     );
-    return;
+    return socketIdToEmitYourCards;
   } else if (droppedCard.value === 'skip') {
     gameRoom.currentTurn = getNextTurn(
       nextPlayerIndex,
       gameRoom.gameDirection,
       gameRoom.players.length,
     );
-    return;
+    return null;
   }
 
-  gameRoom.currentTurn = nextPlayerIndex
+  gameRoom.currentTurn = nextPlayerIndex;
+  return null;
 };
 
 const drawCard = (socketId: string, roomsMap: Map<string, Room>): void => {

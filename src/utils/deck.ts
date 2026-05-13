@@ -53,7 +53,7 @@ export const dealCards = (
 
   let openCard: Card = deck.shift() as Card;
 
-  while (openCard.value == 'wild' || openCard.value == 'wildDraw4') {
+  while (openCard.value === 'wild' || openCard.value === 'wildDraw4') {
     deck.push(openCard);
     openCard = deck.shift() as Card;
   }

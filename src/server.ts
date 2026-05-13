@@ -135,6 +135,7 @@ io.on('connection', (socket) => {
           room.players.length,
         );
 
+        
         room.drawPile = drawPile;
         room.discardPile = [openCard];
         room.currentColor = openCard.color;
@@ -144,8 +145,31 @@ io.on('connection', (socket) => {
 
         for (const [index, player] of room.players.entries()) {
           room.players[index].cards = playersCards[index];
+        }
+
+        //Handling special opening cards
+        if(openCard.value === 'skip') {
+          room.currentTurn = 1;
+        } 
+
+        if(openCard.value === 'reverse') {
+          room.gameDirection = -1;
+          room.currentTurn = room.players.length - 1;
+        } 
+
+        if(openCard.value === 'draw2') {
+          const nextPlayerIndex = room.currentTurn;
+          const nextPlayer = room.players[nextPlayerIndex];
+          for (let i = 0; i < 2; i++) {
+            const drawCard = drawPile.shift();
+            if (drawCard) nextPlayer.cards.push(drawCard);
+          }
+          room.currentTurn = 1
+        }
+
+        for (const [index, player] of room.players.entries()) {
           io.to(player.socketId).emit('yourCards', {
-            yourCards: playersCards[index],
+            yourCards: room.players[index].cards,
           });
         }
 
@@ -168,7 +192,7 @@ io.on('connection', (socket) => {
     'playCard',
     ({ cardId, chosenColor }: { cardId: string; chosenColor?: CardColor }) => {
       try {
-        playCard(cardId, socket.id, roomsMap, chosenColor);
+        const socketIdToEmitYourCards = playCard(cardId, socket.id, roomsMap, chosenColor);
 
         const result = gameHelper.getPlayerRoom(socket.id, roomsMap);
         if (!result) return; // should never happen
@@ -185,6 +209,13 @@ io.on('connection', (socket) => {
         }
 
         io.to(socket.id).emit('yourCards', { yourCards: player.cards });
+
+        if(socketIdToEmitYourCards) {
+          const effectedPlayer = room.players.find(player => player.socketId === socketIdToEmitYourCards);
+          if(effectedPlayer) {
+            io.to(socketIdToEmitYourCards).emit('yourCards', { yourCards: effectedPlayer.cards });
+          }
+        }
 
         const topCard = room.discardPile[room.discardPile.length - 1];
         io.to(roomId).emit('cardPlayed', {
