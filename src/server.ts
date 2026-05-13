@@ -1,8 +1,10 @@
 import express from 'express';
 import { Server } from 'socket.io';
 import http from 'http';
-import { Player, Room } from './types';
+import { CardColor, Player, Room } from './types';
 import { dealCards, getShuffledDeck } from './utils/deck';
+import { gameHelper } from './utils/helper';
+import { drawCard, playCard } from './utils/gameLogic';
 
 const app = express();
 const server = http.createServer(app);
@@ -13,10 +15,7 @@ const io = new Server(server, {
   },
 });
 
-
-
 const roomsMap = new Map<string, Room>();
-
 
 io.on('connection', (socket) => {
   console.log('A user connected');
@@ -163,6 +162,78 @@ io.on('connection', (socket) => {
     }
 
     socket.emit('error', 'Join a room to start the game');
+  });
+
+  socket.on(
+    'playCard',
+    ({ cardId, chosenColor }: { cardId: string; chosenColor?: CardColor }) => {
+      try {
+        playCard(cardId, socket.id, roomsMap, chosenColor);
+
+        const result = gameHelper.getPlayerRoom(socket.id, roomsMap);
+        if (!result) return; // should never happen
+
+        const { roomId, room } = result;
+        const player = room.players.find(
+          (player) => player.socketId === socket.id,
+        )!;
+        if (!player) return; // should never happen
+
+        // Check for winner
+        if (player.cards.length === 0) {
+          return io.to(roomId).emit('gameEnded', { winner: player.name });
+        }
+
+        io.to(socket.id).emit('yourCards', { yourCards: player.cards });
+
+        const topCard = room.discardPile[room.discardPile.length - 1];
+        io.to(roomId).emit('cardPlayed', {
+          topCard,
+          currentPlayer: room.currentTurn,
+          currentColor: room.currentColor,
+          currentValue: room.currentValue,
+          playersCardsCounts: room.players.map((player: Player) => ({
+            name: player.name,
+            cardCount: player.cards.length,
+          })),
+          lastAction: `Player ${player.name} played ${topCard.color} ${topCard.value}`,
+        });
+      } catch (error: any) {
+        socket.emit('error', error.message);
+      }
+    },
+  );
+
+  socket.on('drawCard', () => {
+    try {
+      drawCard(socket.id, roomsMap);
+
+      const result = gameHelper.getPlayerRoom(socket.id, roomsMap);
+      if (!result) return; // should never happen
+
+      const { roomId, room } = result;
+      const player = room.players.find(
+        (player) => player.socketId === socket.id,
+      );
+      if (!player) return; // should never happen
+
+      io.to(socket.id).emit('yourCards', { yourCards: player.cards });
+
+      const topCard = room.discardPile[room.discardPile.length - 1];
+      io.to(roomId).emit('cardPlayed', {
+        topCard,
+        currentPlayer: room.currentTurn,
+        currentColor: room.currentColor,
+        currentValue: room.currentValue,
+        playersCardsCounts: room.players.map((player: Player) => ({
+          name: player.name,
+          cardCount: player.cards.length,
+        })),
+        lastAction: `Player ${player.name} drawn a card`,
+      });
+    } catch (error: any) {
+      socket.emit('error', error.message);
+    }
   });
 });
 
