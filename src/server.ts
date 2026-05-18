@@ -2,10 +2,10 @@ import express from "express";
 import { Server } from "socket.io";
 import http from "http";
 import { CardColor, Player, Room } from "./types";
-import { dealCards, getShuffledDeck } from "./utils/deck";
 import { gameHelper } from "./utils/helper";
 import { drawCard, playCard } from "./utils/gameLogic";
 import { roomManager } from "./managers/roomManger";
+import { gameManager } from "./managers/gameManager";
 
 const app = express();
 const server = http.createServer(app);
@@ -77,123 +77,26 @@ io.on("connection", (socket) => {
 
   socket.on("startGame", () => {
     try {
-      const { roomId, player } = roomManager.getPlayer(socket.id);
-      const room = roomManager.getRoom(roomId);
+      const { roomId, room } = roomManager.getRoomBySocketId(socket.id);
+      gameManager.startGame(room);
 
-      if (player && !room.gameStarted) {
-        room.gameStarted = true;
-        const shuffledDeck = getShuffledDeck();
-        const { playersCards, drawPile, openCard } = dealCards(shuffledDeck, room.players.length);
-
-        room.drawPile = drawPile;
-        room.discardPile = [openCard];
-        room.currentColor = openCard.color;
-        room.currentValue = openCard.value;
-        room.currentTurn = 0;
-        room.gameDirection = 1;
-
-        for (const [index, player] of room.players.entries()) {
-          room.players[index].cards = playersCards[index];
-        }
-
-        //Handling special opening cards
-        if (openCard.value === "skip") {
-          room.currentTurn = 1;
-        }
-
-        if (openCard.value === "reverse") {
-          room.gameDirection = -1;
-          room.currentTurn = room.players.length - 1;
-        }
-
-        if (openCard.value === "draw2") {
-          const nextPlayerIndex = room.currentTurn;
-          const nextPlayer = room.players[nextPlayerIndex];
-          for (let i = 0; i < 2; i++) {
-            const drawCard = drawPile.shift();
-            if (drawCard) nextPlayer.cards.push(drawCard);
-          }
-          room.currentTurn = 1;
-        }
-
-        for (const [index, player] of room.players.entries()) {
-          io.to(player.socketId).emit("yourCards", {
-            yourCards: room.players[index].cards,
-          });
-        }
-
-        io.to(roomId).emit("gameStarted", {
-          openCard,
-          currentPlayer: room.currentTurn,
-          playerCardCounts: room.players.map((player: Player) => ({
-            name: player.name,
-            cardCount: player.cards.length,
-          })),
+      for (const [index, player] of room.players.entries()) {
+        io.to(player.socketId).emit("yourCards", {
+          yourCards: room.players[index].cards,
         });
-        return;
       }
+
+      io.to(roomId).emit("gameStarted", {
+        openCard: room.discardPile[room.discardPile.length - 1],
+        currentPlayer: room.currentTurn,
+        playerCardCounts: room.players.map((player: Player) => ({
+          name: player.name,
+          cardCount: player.cards.length,
+        })),
+      });
     } catch (error: any) {
       return socket.emit("error", error.message);
     }
-
-    for (const [roomId, room] of roomsMap) {
-      const player = room.players.find((player: Player) => player.socketId === socket.id);
-
-      if (player && !room.gameStarted) {
-        room.gameStarted = true;
-        const shuffledDeck = getShuffledDeck();
-        const { playersCards, drawPile, openCard } = dealCards(shuffledDeck, room.players.length);
-
-        room.drawPile = drawPile;
-        room.discardPile = [openCard];
-        room.currentColor = openCard.color;
-        room.currentValue = openCard.value;
-        room.currentTurn = 0;
-        room.gameDirection = 1;
-
-        for (const [index, player] of room.players.entries()) {
-          room.players[index].cards = playersCards[index];
-        }
-
-        //Handling special opening cards
-        if (openCard.value === "skip") {
-          room.currentTurn = 1;
-        }
-
-        if (openCard.value === "reverse") {
-          room.gameDirection = -1;
-          room.currentTurn = room.players.length - 1;
-        }
-
-        if (openCard.value === "draw2") {
-          const nextPlayerIndex = room.currentTurn;
-          const nextPlayer = room.players[nextPlayerIndex];
-          for (let i = 0; i < 2; i++) {
-            const drawCard = drawPile.shift();
-            if (drawCard) nextPlayer.cards.push(drawCard);
-          }
-          room.currentTurn = 1;
-        }
-
-        for (const [index, player] of room.players.entries()) {
-          io.to(player.socketId).emit("yourCards", {
-            yourCards: room.players[index].cards,
-          });
-        }
-
-        io.to(roomId).emit("gameStarted", {
-          openCard,
-          currentPlayer: room.currentTurn,
-          playerCardCounts: room.players.map((player: Player) => ({
-            name: player.name,
-            cardCount: player.cards.length,
-          })),
-        });
-        return;
-      }
-    }
-
-    socket.emit("error", "Join a room to start the game");
   });
 
   socket.on("playCard", ({ cardId, chosenColor }: { cardId: string; chosenColor?: CardColor }) => {

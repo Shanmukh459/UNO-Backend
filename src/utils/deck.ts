@@ -41,7 +41,7 @@ const shuffleDeck = (deck: Card[]): Card[] => {
   return deck;
 };
 
-export const dealCards = (
+const dealCards = (
   deck: Card[],
   numPlayers: number,
 ): { playersCards: Card[][]; drawPile: Card[]; openCard: Card } => {
@@ -61,4 +61,9 @@ export const dealCards = (
   return { playersCards: playerCards, drawPile: deck, openCard };
 };
 
-export const getShuffledDeck = (): Card[] => shuffleDeck(generateDeck());
+const getShuffledDeck = (): Card[] => shuffleDeck(generateDeck());
+
+export const deckUtils = {
+  getShuffledDeck,
+  dealCards
+}

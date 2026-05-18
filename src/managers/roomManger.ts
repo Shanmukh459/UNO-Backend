@@ -1,3 +1,4 @@
+import { get } from "http";
 import { Player, Room } from "../types";
 
 const rooms = new Map<string, Room>();
@@ -7,7 +8,7 @@ const getPlayerRoom = (socketId: string): { roomId: string; room: Room } | null 
   for (const [roomId, room] of rooms.entries()) {
     if (room.players.some((player) => player.socketId === socketId)) return { roomId, room };
   }
-  return null;
+  throw new Error("You are not in any room!");
 };
 
 // ==== PUBLIC METHODS ====
@@ -24,12 +25,6 @@ const createRoom = (playerName: string, socketId: string) => {
     discardPile: [],
   });
   return roomId;
-};
-
-const getRoom = (roomId: string) => {
-  const room = rooms.get(roomId);
-  if (!room) throw new Error("Room not found!");
-  return room;
 };
 
 const addPlayerToRoom = (roomId: string, playerName: string, socketId: string): void => {
@@ -69,10 +64,24 @@ const getPlayer = (socketId: string): { roomId: string; player: Player } => {
   return { roomId, player };
 };
 
+const getRoom = (roomId: string) => {
+  const room = rooms.get(roomId);
+  if (!room) throw new Error("Room not found!");
+  return room;
+};
+
+const getRoomBySocketId = (socketId: string): {roomId: string; room: Room} => {
+  const { roomId } = getPlayerRoom(socketId)!;
+  const room = getRoom(roomId);
+
+  return {roomId, room};
+}
+
 export const roomManager = {
   createRoom,
   getRoom,
   addPlayerToRoom,
   removePlayerFromRoom,
   getPlayer,
+  getRoomBySocketId,
 };
