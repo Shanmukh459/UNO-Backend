@@ -2,10 +2,10 @@ import express from "express";
 import { Server } from "socket.io";
 import http from "http";
 import { CardColor, Player, Room } from "./types";
-import { gameHelper } from "./utils/helper";
-import { drawCard, playCard } from "./utils/gameLogic";
+import { roomHelper } from "./utils/roomHelper";
 import { roomManager } from "./managers/roomManger";
 import { gameManager } from "./managers/gameManager";
+import { gameService } from "./services/gameService";
 
 const app = express();
 const server = http.createServer(app);
@@ -101,9 +101,9 @@ io.on("connection", (socket) => {
 
   socket.on("playCard", ({ cardId, chosenColor }: { cardId: string; chosenColor?: CardColor }) => {
     try {
-      const socketIdToEmitYourCards = playCard(cardId, socket.id, roomsMap, chosenColor);
+      const socketIdToEmitYourCards = gameService.playCard(cardId, socket.id, roomsMap, chosenColor);
 
-      const result = gameHelper.getPlayerRoom(socket.id, roomsMap);
+      const result = roomHelper.getPlayerRoom(socket.id, roomsMap);
       if (!result) return; // should never happen
 
       const { roomId, room } = result;
@@ -145,9 +145,9 @@ io.on("connection", (socket) => {
 
   socket.on("drawCard", () => {
     try {
-      drawCard(socket.id, roomsMap);
+      gameService.drawCard(socket.id, roomsMap);
 
-      const result = gameHelper.getPlayerRoom(socket.id, roomsMap);
+      const result = roomHelper.getPlayerRoom(socket.id, roomsMap);
       if (!result) return; // should never happen
 
       const { roomId, room } = result;
