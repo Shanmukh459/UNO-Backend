@@ -1,5 +1,5 @@
 import { gameService } from "../services/gameService";
-import { Room } from "../types";
+import { CardColor, Room } from "../types";
 import { gameValidator } from "../Validators/gameValidator";
 
 const startGame = (room: Room): void => {
@@ -7,6 +7,22 @@ const startGame = (room: Room): void => {
   gameService.initializeGame(room);
 };
 
+const playCard = (
+  cardId: string,
+  socketId: string,
+  rooms: Map<string, Room>,
+  chosenColor?: CardColor,
+): string | null => {
+  const { gameRoom, droppedCard } = gameValidator.validatePlayCard(cardId, socketId, rooms, chosenColor);
+  return gameService.playCard(gameRoom, droppedCard, chosenColor);
+};
+
+const drawCard = (socketId: string, roomsMap: Map<string, Room>): void => {
+  gameService.drawCard(socketId, roomsMap);
+}
+
 export const gameManager = {
   startGame,
+  playCard,
+  drawCard,
 };

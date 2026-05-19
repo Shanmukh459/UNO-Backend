@@ -5,7 +5,6 @@ import { CardColor, Player, Room } from "./types";
 import { roomHelper } from "./utils/roomHelper";
 import { roomManager } from "./managers/roomManger";
 import { gameManager } from "./managers/gameManager";
-import { gameService } from "./services/gameService";
 
 const app = express();
 const server = http.createServer(app);
@@ -101,12 +100,12 @@ io.on("connection", (socket) => {
 
   socket.on("playCard", ({ cardId, chosenColor }: { cardId: string; chosenColor?: CardColor }) => {
     try {
-      const socketIdToEmitYourCards = gameService.playCard(cardId, socket.id, roomsMap, chosenColor);
+      const socketIdToEmitYourCards = gameManager.playCard(cardId, socket.id, roomsMap, chosenColor);
 
       const result = roomHelper.getPlayerRoom(socket.id, roomsMap);
       if (!result) return; // should never happen
 
-      const { roomId, room } = result;
+      const { roomId, gameRoom: room } = result;
       const player = room.players.find((player) => player.socketId === socket.id)!;
       if (!player) return; // should never happen
 
@@ -145,12 +144,12 @@ io.on("connection", (socket) => {
 
   socket.on("drawCard", () => {
     try {
-      gameService.drawCard(socket.id, roomsMap);
+      gameManager.drawCard(socket.id, roomsMap);
 
       const result = roomHelper.getPlayerRoom(socket.id, roomsMap);
       if (!result) return; // should never happen
 
-      const { roomId, room } = result;
+      const { roomId, gameRoom: room } = result;
       const player = room.players.find((player) => player.socketId === socket.id);
       if (!player) return; // should never happen
 
