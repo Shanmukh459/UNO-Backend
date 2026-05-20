@@ -13,13 +13,19 @@ const playCard = (
   rooms: Map<string, Room>,
   chosenColor?: CardColor,
 ): string | null => {
-  const { gameRoom, droppedCard } = gameValidator.validatePlayCard(cardId, socketId, rooms, chosenColor);
+  const { gameRoom, droppedCard } = gameValidator.validatePlayCard(
+    cardId,
+    socketId,
+    rooms,
+    chosenColor,
+  );
   return gameService.playCard(gameRoom, droppedCard, chosenColor);
 };
 
 const drawCard = (socketId: string, roomsMap: Map<string, Room>): void => {
-  gameService.drawCard(socketId, roomsMap);
-}
+  const { gameRoom, player } = gameValidator.validateDrawCard(socketId, roomsMap);
+  gameService.drawCard(player, gameRoom);
+};
 
 export const gameManager = {
   startGame,

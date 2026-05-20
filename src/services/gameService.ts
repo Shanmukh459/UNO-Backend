@@ -2,6 +2,7 @@ import { Room, CardColor, Card, Player } from "../types";
 import { deckUtils } from "../utils/deck";
 import { gameHelper } from "../utils/gameHelper";
 import { roomHelper } from "../utils/roomHelper";
+import { gameValidator } from "../Validators/gameValidator";
 
 // ==== PUBLIC METHODS ====
 
@@ -48,19 +49,7 @@ const playCard = (gameRoom: Room, droppedCard: Card, chosenColor?: CardColor) =>
   return socketIdToEmitYourCards;
 };
 
-const drawCard = (socketId: string, roomsMap: Map<string, Room>): void => {
-  const result = roomHelper.getPlayerRoom(socketId, roomsMap);
-  if (!result) throw new Error(`Error: Game doesn't exists`);
-
-  const { gameRoom: gameRoom } = result;
-  const player = gameRoom.players.find((player) => player.socketId === socketId);
-  if (!player) throw new Error(`Error: Player doesn't belong to the room`);
-
-  const currentPlayer = gameRoom.players[gameRoom.currentTurn];
-  if (currentPlayer.socketId !== socketId) throw new Error(`Error: Not your turn`);
-
-  if (gameRoom.drawPile.length === 0) throw new Error(`Error: No cards left to draw`);
-
+const drawCard = (player: Player, gameRoom: Room): void => {
   const drawnCard = gameRoom.drawPile.shift()!;
   player.cards.push(drawnCard);
 

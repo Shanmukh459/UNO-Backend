@@ -15,8 +15,6 @@ const io = new Server(server, {
   },
 });
 
-const roomsMap = new Map<string, Room>();
-
 io.on("connection", (socket) => {
   console.log("A user connected");
 
@@ -102,13 +100,9 @@ io.on("connection", (socket) => {
     try {
       const socketIdToEmitYourCards = gameManager.playCard(cardId, socket.id, roomsMap, chosenColor);
 
-      const result = roomHelper.getPlayerRoom(socket.id, roomsMap);
-      if (!result) return; // should never happen
-
-      const { roomId, gameRoom: room } = result;
-      const player = room.players.find((player) => player.socketId === socket.id)!;
-      if (!player) return; // should never happen
-
+      const { roomId, gameRoom } = roomHelper.getPlayerRoom(socket.id, roomsMap)!;
+      const player = roomHelper.getPlayer(gameRoom, socket.id);
+      
       // Check for winner
       if (player.cards.length === 0) {
         return io.to(roomId).emit("gameEnded", { winner: player.name });
@@ -117,21 +111,17 @@ io.on("connection", (socket) => {
       io.to(socket.id).emit("yourCards", { yourCards: player.cards });
 
       if (socketIdToEmitYourCards) {
-        const effectedPlayer = room.players.find(
-          (player) => player.socketId === socketIdToEmitYourCards,
-        );
-        if (effectedPlayer) {
-          io.to(socketIdToEmitYourCards).emit("yourCards", { yourCards: effectedPlayer.cards });
-        }
+        const effectedPlayer = roomHelper.getPlayer(gameRoom, socketIdToEmitYourCards);
+        io.to(socketIdToEmitYourCards).emit("yourCards", { yourCards: effectedPlayer.cards });
       }
 
-      const topCard = room.discardPile[room.discardPile.length - 1];
+      const topCard = gameRoom.discardPile[gameRoom.discardPile.length - 1];
       io.to(roomId).emit("cardPlayed", {
         topCard,
-        currentPlayer: room.currentTurn,
-        currentColor: room.currentColor,
-        currentValue: room.currentValue,
-        playersCardsCounts: room.players.map((player: Player) => ({
+        currentPlayer: gameRoom.currentTurn,
+        currentColor: gameRoom.currentColor,
+        currentValue: gameRoom.currentValue,
+        playersCardsCounts: gameRoom.players.map((player: Player) => ({
           name: player.name,
           cardCount: player.cards.length,
         })),
@@ -146,22 +136,18 @@ io.on("connection", (socket) => {
     try {
       gameManager.drawCard(socket.id, roomsMap);
 
-      const result = roomHelper.getPlayerRoom(socket.id, roomsMap);
-      if (!result) return; // should never happen
-
-      const { roomId, gameRoom: room } = result;
-      const player = room.players.find((player) => player.socketId === socket.id);
-      if (!player) return; // should never happen
+      const { roomId, gameRoom } = roomHelper.getPlayerRoom(socket.id, roomsMap)!;
+      const player = gameRoom.players.find((player) => player.socketId === socket.id)!;
 
       io.to(socket.id).emit("yourCards", { yourCards: player.cards });
 
-      const topCard = room.discardPile[room.discardPile.length - 1];
+      const topCard = gameRoom.discardPile[gameRoom.discardPile.length - 1];
       io.to(roomId).emit("cardPlayed", {
         topCard,
-        currentPlayer: room.currentTurn,
-        currentColor: room.currentColor,
-        currentValue: room.currentValue,
-        playersCardsCounts: room.players.map((player: Player) => ({
+        currentPlayer: gameRoom.currentTurn,
+        currentColor: gameRoom.currentColor,
+        currentValue: gameRoom.currentValue,
+        playersCardsCounts: gameRoom.players.map((player: Player) => ({
           name: player.name,
           cardCount: player.cards.length,
         })),

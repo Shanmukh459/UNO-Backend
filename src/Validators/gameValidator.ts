@@ -37,6 +37,11 @@ const validateChoosenColor = (droppedCard: Card, chosenColor?: CardColor) => {
     throw new Error(`Error: Color must be selected when WILD card played`);
 };
 
+const validateEmptyDrawPile = (gameRoom: Room) => {
+  if (gameRoom.drawPile.length === 0) 
+    throw new Error(`Error: No cards left to draw!`);
+}
+
 const validateStartGame = (room: Room): void => {
   if (room.gameStarted) throw new Error("Game has already started!");
 
@@ -57,7 +62,18 @@ const validatePlayCard = (cardId: string, socketId: string, rooms: Map<string, R
   return { gameRoom, droppedCard };
 };
 
+const validateDrawCard = (socketId: string, rooms: Map<string, Room>) => {
+  const { gameRoom } = validateGameExists(socketId, rooms);
+  const player = validatePlayerExists(socketId, gameRoom);
+
+  validatePlayerTurn(socketId, gameRoom);
+  validateEmptyDrawPile(gameRoom);
+  
+  return { gameRoom, player };
+}
+
 export const gameValidator = {
   validateStartGame,
   validatePlayCard,
+  validateDrawCard
 };
